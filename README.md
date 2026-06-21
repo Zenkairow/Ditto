@@ -32,9 +32,9 @@ If you just copy-paste raw transcripts, you waste 80,000+ tokens on conversation
 Instead of moving raw text, Ditto compiles the session into a dense, token-efficient **7-Pillar Semantic Blueprint** stored securely in your browser's local storage.
 
 <div align="center">
-  <img src="https://placehold.co/800x400/1e293b/818cf8?text=Ditto+In+Action+(Add+GIF+Here)" width="80%">
+  <img src="extension/icons/demo.gif" width="80%">
   <br>
-  <em>(Replace this placeholder with a GIF showing ChatGPT syncing to the Dashboard)</em>
+  <em>Ditto extracting and syncing a chaotic ChatGPT session into a 7-Pillar Blueprint.</em>
 </div>
 
 ---
