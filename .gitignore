@@ -1,0 +1,9 @@
+# Ditto
+.agents/
+.ai-context/
+node_modules/
+*.zip
+.env
+legacy_backend/venv/
+__pycache__/
+*.pyc

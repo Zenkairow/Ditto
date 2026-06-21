@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ditto Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-glass: rgba(18, 18, 20, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.06);
+            --accent-glow: rgba(99, 102, 241, 0.25);
+            --accent-primary: #818cf8;
+            --panel-bg: rgba(10, 10, 12, 0.8);
+        }
+        body { 
+            background-color: var(--bg-deep); 
+            color: #e2e8f0; 
+            font-family: 'Outfit', sans-serif;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(79, 70, 229, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+        .glass {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+        }
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glass);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .text-accent { color: var(--accent-primary); }
+        .text-success { color: #34d399; text-shadow: 0 0 10px rgba(52, 211, 153, 0.2); }
+        
+        /* Micro-animations */
+        .session-item {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+        }
+        .session-item:hover {
+            transform: translateX(4px) translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px var(--accent-glow);
+            border-color: rgba(99, 102, 241, 0.3);
+            background: rgba(30, 30, 35, 0.9);
+        }
+        .btn-primary {
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--accent-glow);
+            filter: brightness(1.15);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        
+        .code-container {
+            font-family: 'Consolas', 'Monaco', monospace;
+            line-height: 1.7;
+            letter-spacing: -0.01em;
+        }
+    </style>
+</head>
+<body class="min-h-screen font-sans overflow-hidden">
+    <div class="flex h-screen p-4 gap-4">
+        <!-- Sidebar: Sessions List -->
+        <aside class="w-1/4 min-w-[300px] glass rounded-2xl flex flex-col h-full overflow-hidden">
+            <div class="p-6 border-b border-white border-opacity-10 flex justify-between items-center bg-black bg-opacity-20">
+                <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 tracking-wide">Ditto</h1>
+                <button id="settingsBtn" class="text-gray-400 hover:text-white transition transform hover:rotate-90 duration-300" title="Settings">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </button>
+            </div>
+            <div id="sessionList" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+        </aside>
+
+        <!-- Main Content: Diff View -->
+        <main class="flex-1 glass rounded-2xl flex flex-col h-full relative overflow-hidden">
+            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 z-10 bg-black bg-opacity-40 backdrop-blur-sm">
+                <svg class="w-16 h-16 mb-4 text-gray-600 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <p class="text-lg tracking-wide font-light">Select a session to view the Semantic Diff Analysis.</p>
+            </div>
+            
+            <div id="diffView" class="hidden flex-1 flex flex-col h-full">
+                <div class="p-6 border-b border-white border-opacity-10 flex justify-between items-center bg-black bg-opacity-20 shadow-sm">
+                    <h2 id="viewTitle" class="text-xl font-semibold text-white truncate max-w-2xl tracking-wide">Session View</h2>
+                    <button id="copyBtn" class="btn-primary text-white px-6 py-2.5 rounded-xl font-medium shadow-lg tracking-wide flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        Copy Bootstrap Payload
+                    </button>
+                </div>
+                
+                <div class="flex-1 grid grid-cols-2 gap-6 p-6 overflow-hidden">
+                    <!-- Raw Intake Panel -->
+                    <div class="glass-panel rounded-2xl flex flex-col h-full overflow-hidden group">
+                        <div class="bg-black bg-opacity-40 px-5 py-3 border-b border-white border-opacity-5 flex items-center justify-between">
+                            <span class="text-sm font-semibold text-gray-400 tracking-wider uppercase">Raw Intake</span>
+                            <span class="text-xs text-gray-600 font-mono">ALL MESSAGES</span>
+                        </div>
+                        <div id="rawContent" class="p-5 overflow-y-auto text-sm text-gray-400 code-container whitespace-pre-wrap flex-1 group-hover:text-gray-300 transition-colors"></div>
+                    </div>
+                    
+                    <!-- Compiled Payload Panel -->
+                    <div class="glass-panel rounded-2xl flex flex-col h-full overflow-hidden group">
+                        <div class="bg-black bg-opacity-40 px-5 py-3 border-b border-white border-opacity-5 flex items-center justify-between">
+                            <span class="text-sm font-semibold text-indigo-400 tracking-wider uppercase">Compiled Semantic Payload</span>
+                            <span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span></span>
+                        </div>
+                        <div id="payloadContent" class="p-5 overflow-y-auto text-sm text-success code-container whitespace-pre-wrap flex-1"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="glass p-8 rounded-3xl w-full max-w-md border border-white border-opacity-10 shadow-2xl transform transition-all scale-100">
+            <div class="flex items-center mb-6 gap-3">
+                <svg class="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <h2 class="text-3xl font-bold text-white tracking-wide">Settings</h2>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-300 mb-3 tracking-wide">Gemini API Key</label>
+                <input type="password" id="apiKeyInput" class="w-full bg-black bg-opacity-50 border border-white border-opacity-10 rounded-xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-inner" placeholder="AIzaSy...">
+                <p class="text-xs text-gray-500 mt-3 leading-relaxed">Required for the Delta Engine to execute Context Extractions. Generate a free key via <a href="https://aistudio.google.com/" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline transition">Google AI Studio</a>.</p>
+            </div>
+            <div class="flex justify-end space-x-4 mt-8">
+                <button id="closeSettingsBtn" class="px-5 py-2.5 text-gray-400 hover:text-white font-medium transition rounded-xl hover:bg-white hover:bg-opacity-5">Cancel</button>
+                <button id="saveSettingsBtn" class="btn-primary text-white px-8 py-2.5 rounded-xl font-semibold tracking-wide">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
