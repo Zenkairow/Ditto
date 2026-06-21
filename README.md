@@ -75,6 +75,15 @@ Ditto doesn't guess; it structures knowledge. Every sync generates a dense Markd
 
 ---
 
+## 🔒 Ultra-Premium Security Guarantee
+Many users are rightfully concerned about where their API keys are stored. Ditto is designed with an unbreakable local-first security model:
+
+1. **Sandboxed Isolation:** Your Gemini API Key is stored strictly inside `chrome.storage.local`. Under Google Chrome's Manifest V3 security model, it is impossible for other websites or malicious scripts you browse to access this storage space.
+2. **Zero Cloud Telemetry:** Ditto has absolutely no backend database. Your chat payloads and API keys are **never** transmitted to our servers or any cloud. The only network request made is directly from your browser to Google's official Gemini endpoint.
+3. **Open Source Verification:** Don't trust, verify. The entire codebase is right here for you to audit. No obfuscation, no hidden trackers.
+
+---
+
 ## 🛠️ Tech Stack & Security
 - **Frontend:** HTML5, TailwindCSS (via CDN for local dashboard), Vanilla JS.
 - **Background Logic:** Chrome Service Workers (Manifest V3).
