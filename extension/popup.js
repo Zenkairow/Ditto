@@ -9,6 +9,11 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
     statusEl.textContent = 'Auto-scrolling to load full chat history...';
     statusEl.style.color = 'var(--text-secondary)';
 
+    // Reset layout for long errors
+    statusEl.style.height = 'auto';
+    statusEl.style.lineHeight = '1.4';
+    statusEl.style.marginTop = '16px';
+
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         
@@ -19,10 +24,17 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
 
             // 1. Fetch Session Token
             statusEl.textContent = 'Authenticating with ChatGPT...';
-            const sessionRes = await fetch("https://chatgpt.com/api/auth/session");
+            const sessionRes = await fetch("https://chatgpt.com/api/auth/session").catch(() => {
+                throw new Error("Network error while trying to reach ChatGPT API. Are you offline?");
+            });
+            
             if (!sessionRes.ok) {
-                throw new Error("Failed to get ChatGPT session. Please make sure you are logged into ChatGPT.");
+                if (sessionRes.status === 401 || sessionRes.status === 403) {
+                    throw new Error("Session expired. Please log in to ChatGPT and try again.");
+                }
+                throw new Error(`Failed to get ChatGPT session (HTTP ${sessionRes.status}).`);
             }
+            
             const sessionData = await sessionRes.json();
             const accessToken = sessionData.accessToken;
             
@@ -32,15 +44,20 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
 
             statusEl.textContent = 'Fetching complete chat history silently...';
 
-            // 2. Fetch Internal Chat Data with Bearer Token (Bypasses Lazy Loading completely!)
+            // 2. Fetch Internal Chat Data with Bearer Token
             const chatRes = await fetch(`https://chatgpt.com/backend-api/conversation/${chatId}`, {
                 headers: {
                     "Authorization": `Bearer ${accessToken}`
                 }
+            }).catch(() => {
+                throw new Error("Network error while fetching conversation. Check your connection.");
             });
             
             if (!chatRes.ok) {
-                throw new Error(`Failed to fetch internal chat data. HTTP ${chatRes.status}.`);
+                if (chatRes.status === 404) {
+                    throw new Error("Chat not found. It may have been deleted.");
+                }
+                throw new Error(`Failed to fetch internal chat data (HTTP ${chatRes.status}).`);
             }
             const chatData = await chatRes.json();
 
@@ -69,7 +86,7 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
             }
 
             if (messages.length === 0) {
-                throw new Error("No messages found in the internal API response.");
+                throw new Error("No text messages found in this conversation.");
             }
 
             scrapeResult = { 
@@ -93,6 +110,11 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
                         title: document.title
                     };
                 }
+            }).catch((err) => {
+                if (err.message.includes("Cannot access contents of url")) {
+                    throw new Error("Cannot extract text from this specific page (browser restriction). Try on a normal webpage.");
+                }
+                throw err;
             });
             
             if (!results || !results[0] || !results[0].result || !results[0].result.text) {
@@ -120,7 +142,7 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
         const response = await chrome.runtime.sendMessage({ type: "SYNC_CHAT", payload: scrapeResult.payload });
 
         if (!response || response.status === "error") {
-            throw new Error(response ? response.error : "Background worker failed to respond.");
+            throw new Error(response ? response.error : "Background worker failed to respond. Please reload the extension.");
         }
 
         const data = response.result;
@@ -167,12 +189,16 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
         btn.disabled = false;
         btn.classList.remove('loading');
         
-        if (err.message && err.message.includes("Gemini API Key")) {
-            statusEl.textContent = "Please set API Key in Dashboard.";
+        // Granular Error Display
+        if (err.message && err.message.includes("Gemini API Key is not set")) {
+            statusEl.innerHTML = "API Key missing.<br>Please set it in the Dashboard.";
         } else {
-            statusEl.textContent = err.message;
+            // Show the specific error thrown from background.js or locally
+            statusEl.textContent = err.message || "An unexpected error occurred.";
         }
-        statusEl.style.color = "#ef4444";
+        statusEl.style.color = "#ef4444"; // Red color
+        
+        // Do NOT auto-clear errors so the user has time to read them
     }
 });
 

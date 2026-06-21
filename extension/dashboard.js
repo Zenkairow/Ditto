@@ -1,6 +1,18 @@
 let currentPayload = "";
 let currentChatId = null;
 
+// [FIX C1] DOM Sanitization Utility
+// Prevents XSS attacks from maliciously crafted chat titles or message contents.
+function sanitizeHTML(str) {
+    if (!str) return '';
+    return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 async function loadSessions() {
     try {
         const storageData = await chrome.storage.local.get(null);
@@ -20,12 +32,17 @@ async function loadSessions() {
         sessions.forEach(s => {
             const el = document.createElement('div');
             el.className = 'session-item glass bg-black bg-opacity-20 p-4 rounded-xl cursor-pointer group relative';
+            
+            // [FIX C1] Sanitize chat title before injecting via innerHTML
+            const safeTitle = sanitizeHTML(s.chat_title || s.chat_id);
+            const dateStr = new Date(s.timestamp).toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+            
             el.innerHTML = `
                 <div class="pr-8">
-                    <div class="font-semibold text-gray-200 truncate tracking-wide text-[15px] mb-1">${s.chat_title || s.chat_id}</div>
+                    <div class="font-semibold text-gray-200 truncate tracking-wide text-[15px] mb-1">${safeTitle}</div>
                     <div class="flex items-center text-xs text-indigo-300/70 font-medium">
                         <svg class="w-3.5 h-3.5 mr-1.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        ${new Date(s.timestamp).toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}
+                        ${dateStr}
                     </div>
                 </div>
                 <button class="delete-btn absolute top-1/2 -translate-y-1/2 right-3 text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition duration-200 p-2 rounded-lg hover:bg-white hover:bg-opacity-5" data-id="${s.chat_id}">
@@ -43,7 +60,7 @@ async function loadSessions() {
             
             list.appendChild(el);
         });
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Ditto: Error loading sessions", e); }
 }
 
 async function loadSessionDetail(chatId) {
@@ -59,27 +76,39 @@ async function loadSessionDetail(chatId) {
         setTimeout(() => emptyState.classList.add('hidden'), 300);
         
         document.getElementById('diffView').classList.remove('hidden');
+        
+        // [FIX C1] Use textContent for the main view title
         document.getElementById('viewTitle').textContent = data.chat_title || data.chat_id;
         
         let rawText = "";
         if(data.raw && data.raw.messages && data.raw.messages.length > 0) {
             data.raw.messages.forEach(m => { 
                 const roleColor = m.role === 'user' ? 'text-indigo-400' : 'text-purple-400';
-                rawText += `<span class="${roleColor} font-bold">[${m.role.toUpperCase()}]</span>:\n${m.content}\n\n---\n\n`; 
+                // [FIX C1] Sanitize role and content
+                const safeRole = sanitizeHTML(m.role).toUpperCase();
+                const safeContent = sanitizeHTML(m.content);
+                rawText += `<span class="${roleColor} font-bold">[${safeRole}]</span>:\n${safeContent}\n\n---\n\n`; 
             });
         } else if(data.raw && data.raw.raw_text) {
-            rawText = `<span class="text-indigo-400 font-bold">[UNIVERSAL EXTRACTION]</span>:\n` + data.raw.raw_text;
+            // [FIX C1] Sanitize universal text extraction
+            rawText = `<span class="text-indigo-400 font-bold">[UNIVERSAL EXTRACTION]</span>:\n` + sanitizeHTML(data.raw.raw_text);
         }
         
+        // Convert newlines to breaks after sanitization
         document.getElementById('rawContent').innerHTML = rawText.replace(/\n/g, '<br>');
+        
+        // [FIX C1] textContent is naturally safe from XSS
         document.getElementById('payloadContent').textContent = data.bootstrap_payload;
         currentPayload = data.bootstrap_payload;
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Ditto: Error loading session details", e); }
 }
 
 document.getElementById('copyBtn').onclick = () => {
     if(currentPayload) {
-        navigator.clipboard.writeText(currentPayload);
+        navigator.clipboard.writeText(currentPayload).catch(err => {
+            console.error("Ditto: Clipboard copy failed", err);
+            alert("Clipboard copy blocked by browser. Please manually select and copy the text.");
+        });
         const btn = document.getElementById('copyBtn');
         const origHTML = btn.innerHTML;
         btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!`;
@@ -108,13 +137,16 @@ function toggleSettings() {
 }
 
 async function saveSettings() {
-    const key = document.getElementById('apiKeyInput').value;
+    const key = document.getElementById('apiKeyInput').value.trim();
     if(!key) return alert("Please enter a valid API key.");
     try {
         await chrome.storage.local.set({ 'GEMINI_API_KEY': key });
         toggleSettings(); 
         alert("Configuration saved successfully. Ditto is ready to sync.");
-    } catch(e) { alert("Failed to save configuration."); }
+    } catch(e) { 
+        console.error("Ditto: Failed to save API key", e);
+        alert("Failed to save configuration. Browser storage might be unavailable."); 
+    }
 }
 
 async function deleteSession(chatId, event) {
@@ -130,7 +162,10 @@ async function deleteSession(chatId, event) {
             currentChatId = null;
         }
         loadSessions();
-    } catch(e) { console.error(e); alert("Failed to delete chat."); }
+    } catch(e) { 
+        console.error("Ditto: Failed to delete session", e);
+        alert("Failed to delete chat."); 
+    }
 }
 
 document.getElementById('settingsBtn').onclick = toggleSettings;
